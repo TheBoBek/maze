@@ -237,59 +237,45 @@ int start_border(Map *map, int r, int c, int leftright){
 
 }
 
-bool move(Map *map, Cell *position, int *d){
-    int dir = *d;
-    if (dir == RIGHT_DIRECTION){
-        if (!isborder(map, position->row, position->col, RIGHT_BORDER)){
-            position->col++;
-            return true;
+int move(Map *map, Cell *position, int dir){
+    printf("\nSMER JE: %d a ", dir);
+    dir = (4 + dir - 1) % 4;
+    printf("%d", dir);
+    
+    for (int i = 0; i < 4; i++){
+        printf("\nSmer je: %d a suradnice su: (%dx%d)", dir, position->row, position->col);
+        if (dir == RIGHT_DIRECTION){
+            if (!isborder(map, position->row, position->col, RIGHT_BORDER)){
+                position->col++;
+                return dir;
+            }
         }
-        else if ((position->row % 2 == 0 && position->col % 2 == 0) ||
-                 (position->row % 2 == 1 && position->col % 2 == 1)){
-            *d = ++dir;
+        else if (dir == TOP_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 0) ||
+                                          (position->row % 2 == 1 && position->col % 2 == 1))){
+            if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
+                position->row--;
+                return dir;
+            }
         }
-        else if ((position->row % 2 == 0 && position->col % 2 == 1) || 
-                 (position->row % 2 == 1 && position->col % 2 == 0)){
-                    printf("TU\n");
-
-            *d = LEFT_DIRECTION;
+        else if (dir == LEFT_DIRECTION){
+            if (!isborder(map, position->row, position->col, LEFT_BORDER)){
+                position->col--;
+                return dir;
+            }
         }
-        return false;
+        else if (dir == BOTTOM_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 1) || 
+                                             (position->row % 2 == 1 && position->col % 2 == 0))){
+            if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
+                position->row++;
+                return BOTTOM_DIRECTION;
+            }
+        }
+        dir = (dir + 1) % 4;
     }
-    // Cele zle to mam tie borders inak treba spraviť
-    else if (dir == TOP_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 0) ||
-                                       (position->row % 2 == 1 && position->col % 2 == 1))){
-        if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
-            position->row--;
-            return true;
-        }
-        return false;
-    }
-    else if (dir == LEFT_DIRECTION){
-        if (!isborder(map, position->row, position->col, LEFT_BORDER)){
-            position->col--;
-            return true;
-        }
-        else if ((position->row % 2 == 0 && position->col % 2 == 0) ||
-                 (position->row % 2 == 1 && position->col % 2 == 1)){
-            *d = RIGHT_DIRECTION;
-        }
-        else if ((position->row % 2 == 0 && position->col % 2 == 1) || 
-                 (position->row % 2 == 1 && position->col % 2 == 0)){
-            *d = LEFT_DIRECTION;
-        }
-        return false;
-    }
-    else if (dir == BOTTOM_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 1) || 
-                                         (position->row % 2 == 1 && position->col % 2 == 0))){
-        if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
-            position->row++;
-            return true;
-        }
-        return false;
-    }
+    printf("BUG");
     return false;
 }
+
 int main(int argc, char *argv[]){
     if (argc > 1){
         if (strcmp(argv[1],"--help") == 0){
@@ -327,29 +313,17 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Invalid input\n");
     }    
     int dir;
-    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule);
+    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + 1;
     printf("Smer je: %d\n", dir);
     int counter = 0;
     // cellPosition.row != exitCell.row || cellPosition.col != exitCell.col || 
     while (counter < 50 && (cellPosition.row != exitCell.row || cellPosition.col != exitCell.col)){
         // Toto je dobre
-        if (move(&myMap, &cellPosition, &dir)){
-            // printf("Bug\n");
-            if (dir == 0){
-                dir = 0;
-            }
-            else{
-                dir = (4 + (dir - 1)) % 4;
-            }
-        }
-        else{
-            printf("(Is Border)");
-            dir = (4 + (dir + 1)) % 4;
-        }
+        dir = move(&myMap, &cellPosition, dir);
+         
         // Safety break
-        printf("\nSmer je: %d a suradnice su: (%dx%d)", dir, cellPosition.row, cellPosition.col);
         counter++;
-}
+    }
     
 
 
