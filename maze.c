@@ -1,34 +1,40 @@
+// Šimon Bobko
+// xbobkos00
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
 
-// Definice hranic
-#define LEFT_BORDER 0x1   // 001 v binárním tvaru
-#define RIGHT_BORDER 0x2  // 010 v binárním tvaru
-#define TOP_BOTTOM_BORDER 0x4 // 100 v binárním tvaru
+// Border definitions
+#define LEFT_BORDER 1
+#define RIGHT_BORDER 2
+#define TOP_BOTTOM_BORDER 4
 
+// Direction definitions
 #define RIGHT_DIRECTION 0
 #define TOP_DIRECTION 1
 #define LEFT_DIRECTION 2
 #define BOTTOM_DIRECTION 3
 
+// Rules definitions
 #define LEFT_RULE -1
 #define RIGHT_RULE 1
 
-// TODOs:
-// 1) Test if NO ENTRY is working
 
 typedef struct {
     int rows;
     int cols;
     unsigned char *cells;
 } Map;
+
 typedef struct{
     int row;
     int col;
 }Cell;
+
+// Function initializes map from specified file
 bool init_map(const char *filename, Map *map) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -51,8 +57,8 @@ bool init_map(const char *filename, Map *map) {
     }
     int i = 0;
     int cell;
-    while (fscanf(file, "%d", &cell) == 1) {
-        // free(map->cells);   
+    // Appendation of map data
+    while (fscanf(file, "%d", &cell) == 1 && i < map->cols*map->rows){
         map->cells[i] = (unsigned char)cell + '0';
         i++;
     }
@@ -62,15 +68,15 @@ bool init_map(const char *filename, Map *map) {
     return true;
 }
 
+// Function checks if cell has specific border
 bool isborder(Map *map, int r, int c, int border) {
     if (map == NULL || r < 0 || r >= map->rows || c < 0 || c >= map->cols) {
         if (c < 0){
         }
-        fprintf(stderr, "Invalid map coordinates2\n");
+        fprintf(stderr, "Invalid map coordinates\n");
         return false;
     }
     unsigned char cell = map->cells[r * map->cols + c];
-    // printf("(%dx%d) ", r, c);
     return ((cell - '0') & border) != 0;
 }
 void mapDtor(Map *map) {
@@ -78,43 +84,40 @@ void mapDtor(Map *map) {
     map->cells = NULL;
 }
 
-//TODO Dokonci funkciu
 // Function checks if cell borders are valid with other cells
 bool shareCellsBorder(Map *map, int counter){
-    // TODO: Differentiate parne/neparne
     int row = counter / map->cols;
     int column = counter % map->cols;
-    // printf("Row:%d Column:%d |\n", row, column);
     // If cell is NOT on last row, checks for top or bottom border
     if (!((counter > map->cols * (map->rows - 1)))){
-        // If row even and column odd // If row odd column even
+        // If row odd and column even || If row even column odd
         if ((row % 2 == 0 && column % 2 == 1) || (row % 2 == 1 && column % 2 == 0)){
             if (!(isborder(map, row, column, TOP_BOTTOM_BORDER)
-                    == isborder(map,row + 1, column, TOP_BOTTOM_BORDER))){
-                // printf("Fail1");
+               == isborder(map,row + 1, column, TOP_BOTTOM_BORDER))){
                 return false;
             }
         }
     }
-
     // If cell is NOT on the last column, checks for right border
     if (column < map->cols - 1){
         if (!(isborder(map, row, column, RIGHT_BORDER)
-        == isborder(map,row, column + 1, LEFT_BORDER))){
-            // printf("Fail2");
+           == isborder(map,row, column + 1, LEFT_BORDER))){
             return false;
         }
     }
     return true;
-
 }
-// Checks if the map is valid
+// Function checks if the map is valid
 bool isMapValid(Map *map){
+    if (map->cells < 0 || map->rows < 0){
+        return false;
+    }
     int i = 0;
+    // Counts cells 
     while (map->cells[i] != '\0'){
         i++;
     }
-    
+    // Validation of cells count
     if (i != map->rows * map->cols){
         return false;
     }
@@ -137,14 +140,10 @@ bool isMapValid(Map *map){
         }
         counter++;
     }
-    // TODO: Dokoncit
-    // Checks if rows and columns are valid
-
     return true;
 }
 
 int start_border(Map *map, int r, int c, int leftright){
-    // printf("%d a %d path: %d",r ,c, leftright);
     // If RIGHT rule
     if (leftright == RIGHT_RULE){
         // 1) BOTTOM: entry is from LEFT on even row !!! counting for 'r' starts from 0 !!!
@@ -204,7 +203,7 @@ int start_border(Map *map, int r, int c, int leftright){
     // 3) RIGHT: entry is TOP
         else if (r == 0){
             if (c % 2 == 1){
-                fprintf(stderr, "Zle zadaný vstup1\n");
+                fprintf(stderr, "Invalid entry\n");
                 return false;
             }
             return RIGHT_DIRECTION;
@@ -212,59 +211,16 @@ int start_border(Map *map, int r, int c, int leftright){
     // 4) LEFT: entry is BOTTOM
         else if (r == map->rows - 1){
             if ((r % 2 == 0 && c % 2 == 0) || (r % 2 == 1 && c % 2 == 1)){
-                fprintf(stderr, "Zle zadaný vstup2\n");
+                fprintf(stderr, "Invalid entry\n");
             }
             return LEFT_DIRECTION;
         }
         else{
-            fprintf(stderr, "Zle zadaný vstup3\n");
+            fprintf(stderr, "Invalid entry\n");
             return false;
         }
-    }
-    // Solution 2
-
-    //DOKONCIT
-    // Solution 1
-    // else if (leftright == LEFT_RULE){
-    // // 1) LEFT: entry is RIGHT odd row
-    //     if (c == map->cols - 1 && r % 2 == 0){
-    //         return LEFT_DIRECTION;
-    //     }
-    // // 2) BOTTOM: entry is RIGHT even row
-    //     else if (c == map->cols - 1 && r % 2 == 1){
-    //         return BOTTOM_DIRECTION;
-    //     }
-    // // 5, 6) TOP or RIGHT: entry is LEFT, cell has TOP or BOTTOM BORDER
-    // // 5) TOP: entry is LEFT, cell has TOP BORDER
-    //     else if (c == 0 && r % 2 == 0 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
-    //         return TOP_DIRECTION;
-    //     }
-    // // 6) RIGHT: entry is LEFT, cell has BOTTOM BORDER 
-    //     else if (c == 0 && r % 2 == 1 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
-    //         return RIGHT_DIRECTION;
-    //     }
-    // // 3) RIGHT: entry is TOP
-    //     else if (r == 0 && !isborder(map, r, c, TOP_BOTTOM_BORDER)){
-    //         if (c % 2 == 1){
-    //             fprintf(stderr, "Zle zadaný vstup1\n");
-    //             return false;
-    //         }
-    //         return RIGHT_DIRECTION;
-    //     }
-    // // 4) LEFT: entry is BOTTOM
-    //     else if (r == map->rows - 1 && !isborder(map, r, c, TOP_BOTTOM_BORDER)){
-    //         if ((r % 2 == 0 && c % 2 == 0) || (r % 2 == 1 && c % 2 == 1)){
-    //             fprintf(stderr, "Zle zadaný vstup2\n");
-    //         }
-    //         return LEFT_DIRECTION;
-    //     }
-    //     else{
-    //         fprintf(stderr, "Zle zadaný vstup3\n");
-    //         return false;
-    //     }
-        
-    // }
-
+}
+// Function moves position of the cell
 int move(Map *map, Cell *position, int dir, int leftright){
     dir = (4 + dir - leftright) % 4;
     for (int i = 0; i < 4; i++){
@@ -296,8 +252,8 @@ int move(Map *map, Cell *position, int dir, int leftright){
         }
         dir = (4 + dir + leftright) % 4;
     }
-    printf("BUG");
-    return false;
+    fprintf(stderr, "Error during rotation in cell\n");
+    return -1;
 }
 
 int main(int argc, char *argv[]){
@@ -311,14 +267,18 @@ int main(int argc, char *argv[]){
     Cell cellPosition;
 
     if (!init_map(argv[argc - 1],&myMap)){
+        // Error during initialization
         mapDtor(&myMap);
-        return 1;  // Chyba při inicializaci mapy
+        return 1;
     }
 
     int rule = RIGHT_RULE;
-    if (strcmp(argv[1], "--test") == 0){
+    if (argv [1] == NULL){
+        return 0;
+    }
+    // Map validation
+    else if (strcmp(argv[1], "--test") == 0){
         if (!isMapValid(&myMap)){
-
             printf("Invalid\n");
             mapDtor(&myMap);
             return 1;
@@ -329,6 +289,7 @@ int main(int argc, char *argv[]){
             return 0;
         }    
     }
+    // Rule initialization
     else if (strcmp(argv[1], "--lpath") == 0){
         cellPosition.row = *argv[2] - '0' - 1;
         cellPosition.col = *argv[3] - '0' - 1;
@@ -339,29 +300,25 @@ int main(int argc, char *argv[]){
         cellPosition.col = *argv[3] - '0' - 1;
         rule = RIGHT_RULE;
     }
+    // Error with input
     else {
         fprintf(stderr, "Invalid input\n");
-    }    
+        mapDtor(&myMap);
+        return 1;
+    }
+
     int dir;
-    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + rule; // Nezabudni (+1 ak rpath, -1 lpath)
-    // printf("path je: %d", dir - rule);
-    // mapDtor(&myMap);
-    // return 0;
-    // printf("Smer je: %d\n", dir - rule);
-    // printf("%d a %d", myMap.rows, myMap.cols);
+    // Initializing first direction (adds rule constant, which is substracted in move function)
+    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + rule;
+    // Cycle runs obeying the rules of rpath or lpath until cellPosition coordinates are out of rows and columns range
     while (!(cellPosition.row < 0 || cellPosition.row >= myMap.rows || cellPosition.col < 0 || cellPosition.col >= myMap.cols)){
-        // Toto je dobre
         printf("%d,%d\n", cellPosition.row + 1, cellPosition.col + 1);
         dir = move(&myMap, &cellPosition, dir, rule);
+        if (dir == -1){
+            mapDtor(&myMap);
+            return 1;
+        }
     }
-    
-
-
-
-    // bool hasLeftBorder = isborder(&myMap, 5, 0, LEFT_BORDER);
-    // printf("Left border at: %s\n", hasLeftBorder ? "Yes" : "No");
-    // // Zde můžete pracovat s mapou...
-
     mapDtor(&myMap);
     return 0;
 }
