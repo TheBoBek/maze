@@ -43,7 +43,7 @@ bool init_map(const char *filename, Map *map) {
     }
 
     //Initialization of row and cols
-    map->cells = malloc(map->rows * map->cols * sizeof(unsigned char));
+    map->cells = malloc(map->rows * map->cols * sizeof(unsigned char) + 1);
     if (map->cells == NULL) {
         perror("Memory allocation failed");
         fclose(file);
