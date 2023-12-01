@@ -305,18 +305,19 @@ int main(int argc, char *argv[]){
 
     Map myMap;
     Cell cellPosition;
+
+    if (strcmp(argv[1],"--help") == 0){
+        printf("Program se spouští v následující podobě:\n ./maze --help\n nebo\n./maze --test soubor.txt\nnebo\n./maze --rpath R C soubor.txt\nnebo\n./maze --lpath R C soubor.txt\n");
+        return 0;
+    }
     
     if (!init_map(argv[argc - 1],&myMap)){
             // Error during initialization
             return 1;
     }
-
     int rule = RIGHT_RULE;
-    if (strcmp(argv[1],"--help") == 0){
-        printf("Napoveda\n");
-    }
     // Map validation
-    else if (strcmp(argv[1], "--test") == 0){
+    if (strcmp(argv[1], "--test") == 0){
         test(&myMap);
         mapDtor(&myMap);
         return 0;
