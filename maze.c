@@ -14,7 +14,7 @@
 #define LEFT_DIRECTION 2
 #define BOTTOM_DIRECTION 3
 
-#define LEFT_RULE 0
+#define LEFT_RULE -1
 #define RIGHT_RULE 1
 
 // TODOs:
@@ -49,18 +49,14 @@ bool init_map(const char *filename, Map *map) {
         fclose(file);
         return false;
     }
-    for (int i = 0; i < map->rows; i++) {
-        for (int j = 0; j < map->cols; j++) {
-            int cell;
-            if (fscanf(file, "%d", &cell) != 1) {
-                fprintf(stderr, "Error reading map data\n");
-                free(map->cells);
-                fclose(file);
-                return false;
-            }
-            map->cells[i * map->cols + j] = (unsigned char)cell + '0';
-        }
+    int i = 0;
+    int cell;
+    while (fscanf(file, "%d", &cell) == 1) {
+        // free(map->cells);   
+        map->cells[i] = (unsigned char)cell + '0';
+        i++;
     }
+    map->cells[i] = '\0';
 
     fclose(file);
     return true;
@@ -69,7 +65,6 @@ bool init_map(const char *filename, Map *map) {
 bool isborder(Map *map, int r, int c, int border) {
     if (map == NULL || r < 0 || r >= map->rows || c < 0 || c >= map->cols) {
         if (c < 0){
-            printf("BUG");
         }
         fprintf(stderr, "Invalid map coordinates2\n");
         return false;
@@ -96,7 +91,7 @@ bool shareCellsBorder(Map *map, int counter){
         if ((row % 2 == 0 && column % 2 == 1) || (row % 2 == 1 && column % 2 == 0)){
             if (!(isborder(map, row, column, TOP_BOTTOM_BORDER)
                     == isborder(map,row + 1, column, TOP_BOTTOM_BORDER))){
-                printf("Fail1");
+                // printf("Fail1");
                 return false;
             }
         }
@@ -106,47 +101,24 @@ bool shareCellsBorder(Map *map, int counter){
     if (column < map->cols - 1){
         if (!(isborder(map, row, column, RIGHT_BORDER)
         == isborder(map,row, column + 1, LEFT_BORDER))){
-            printf("Fail2");
+            // printf("Fail2");
             return false;
         }
     }
     return true;
 
 }
-// Function cecks if the cell is entry cell (If there is outer border in maze)
-void isEntryCell(Map *map, Cell *cell, int row, int column){
-    printf("(%d %d)", row, column);
-    // Check first row
-    if(row == 0 && column % 2 == 0 && !isborder(map, row, column, TOP_BOTTOM_BORDER)){
-        cell->row = row;
-        cell->col = column;
-    }
-    // Check first column
-    else if (column == 0 && !isborder(map, row, column, LEFT_BORDER)){
-        cell->row = row;
-        cell->col = column;
-    }
-    // Check last column
-    else if (column == map->cols - 1 && !isborder(map, row, column, RIGHT_BORDER)){
-        cell->row = row;
-        cell->col = column;
-    }
-    // Check last row
-    else if(row == map->rows - 1){
-        // printf("Border je: %d\n", !isborder(map, row, column, TOP_BOTTOM_BORDER));
-        if (row % 2 == 0 && column % 2 == 1 && !isborder(map, row, column, TOP_BOTTOM_BORDER)){
-            cell->row = row;
-            cell->col = column;
-        }
-        else if (row % 2 == 1 && column % 2 == 0 && !isborder(map, row, column, TOP_BOTTOM_BORDER)){
-            cell->row = row;
-            cell->col = column;
-        }
-    }
-}
 // Checks if the map is valid
-bool isMapValid(Map *map, Cell *cell_t){
-    bool flag = false;
+bool isMapValid(Map *map){
+    int i = 0;
+    while (map->cells[i] != '\0'){
+        i++;
+    }
+    
+    if (i != map->rows * map->cols){
+        return false;
+    }
+    
     int counter = 0;
     while (counter < (map->rows * map->cols)) {
         // Checks cells for valid data, if invalid, returns false
@@ -155,11 +127,7 @@ bool isMapValid(Map *map, Cell *cell_t){
             // Cycle runs only for the row - 1
             if (counter < (map->cols*(map->rows - 1))){
                 if (!(shareCellsBorder(map, counter))){
-                    printf("Fejl");
                     return false;
-                }
-                else{
-                    printf("Suxes\n");
                 }
             }
         }
@@ -171,40 +139,19 @@ bool isMapValid(Map *map, Cell *cell_t){
     }
     // TODO: Dokoncit
     // Checks if rows and columns are valid
-    if (counter != map->rows * map->cols){
-        printf("Inavlid map dimensions");
-        return false;
-    }
-    if (!flag){
-        printf("Entry cell not found\n");
-        return false;
-    }
-    else{
-        printf("Entry cell is on position: (%d %d)", cell_t->row, cell_t->col);
-    }
 
     return true;
 }
 
-// bool findExitCell(Map *map, Cell *cell){
-//     int column = 0;
-//     for (column < map->cols; column++){
-//         if (isExitCell(map, cell, 0, column))
-//         {
-//             /* code */
-//         }
-        
-//     }
-// }
 int start_border(Map *map, int r, int c, int leftright){
-    printf("%d a %d",r ,c);
+    // printf("%d a %d path: %d",r ,c, leftright);
     // If RIGHT rule
-    if (leftright == 1){
-        // 1) RIGHT: entry is from LEFT on even row !!! counting for 'r' starts from 0 !!!
+    if (leftright == RIGHT_RULE){
+        // 1) BOTTOM: entry is from LEFT on even row !!! counting for 'r' starts from 0 !!!
         if (r % 2 == 1 && c == 0){
             return BOTTOM_DIRECTION;
         }
-        // 2) BOTTOM: entry is LEFT on odd row !!! counting for 'r' starts from 0 !!!
+        // 2) RIGHT: entry is LEFT on odd row !!! counting for 'r' starts from 0 !!!
         else if (r % 2 == 0 && c == 0){
             return RIGHT_DIRECTION;
         }
@@ -215,8 +162,12 @@ int start_border(Map *map, int r, int c, int leftright){
                 return TOP_DIRECTION;
             }
             // 6) LEFT: entry RIGHT, cell has BOTTOM BORDER
-            else{
+            else if ((r % 2 == 0 && c % 2 == 1) || (r % 2 == 1 && c % 2 == 0)){
                 return LEFT_DIRECTION;
+            }
+            else{
+                printf("BUG1 start_border\n");
+                return false;
             }
         }
         // 3) LEFT: entry is TOP
@@ -232,18 +183,91 @@ int start_border(Map *map, int r, int c, int leftright){
             return -1;
         }
     }
-    // If LEFT rule
-    return false;
 
-}
+    // 1) LEFT: entry is RIGHT odd row
+        if (c == map->cols - 1 && r % 2 == 0){
+            return LEFT_DIRECTION;
+        }
+    // 2) BOTTOM: entry is RIGHT even row
+        else if (c == map->cols - 1 && r % 2 == 1){
+            return BOTTOM_DIRECTION;
+        }
+    // 5, 6) TOP or RIGHT: entry is LEFT, cell has TOP or BOTTOM BORDER
+    // 5) TOP: entry is LEFT, cell has TOP BORDER
+        else if (c == 0 && r % 2 == 0 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
+            return TOP_DIRECTION;
+        }
+    // 6) RIGHT: entry is LEFT, cell has BOTTOM BORDER 
+        else if (c == 0 && r % 2 == 1 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
+            return RIGHT_DIRECTION;
+        }
+    // 3) RIGHT: entry is TOP
+        else if (r == 0){
+            if (c % 2 == 1){
+                fprintf(stderr, "Zle zadaný vstup1\n");
+                return false;
+            }
+            return RIGHT_DIRECTION;
+        }
+    // 4) LEFT: entry is BOTTOM
+        else if (r == map->rows - 1){
+            if ((r % 2 == 0 && c % 2 == 0) || (r % 2 == 1 && c % 2 == 1)){
+                fprintf(stderr, "Zle zadaný vstup2\n");
+            }
+            return LEFT_DIRECTION;
+        }
+        else{
+            fprintf(stderr, "Zle zadaný vstup3\n");
+            return false;
+        }
+    }
+    // Solution 2
 
-int move(Map *map, Cell *position, int dir){
-    printf("\nSMER JE: %d a ", dir);
-    dir = (4 + dir - 1) % 4;
-    printf("%d", dir);
-    
+    //DOKONCIT
+    // Solution 1
+    // else if (leftright == LEFT_RULE){
+    // // 1) LEFT: entry is RIGHT odd row
+    //     if (c == map->cols - 1 && r % 2 == 0){
+    //         return LEFT_DIRECTION;
+    //     }
+    // // 2) BOTTOM: entry is RIGHT even row
+    //     else if (c == map->cols - 1 && r % 2 == 1){
+    //         return BOTTOM_DIRECTION;
+    //     }
+    // // 5, 6) TOP or RIGHT: entry is LEFT, cell has TOP or BOTTOM BORDER
+    // // 5) TOP: entry is LEFT, cell has TOP BORDER
+    //     else if (c == 0 && r % 2 == 0 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
+    //         return TOP_DIRECTION;
+    //     }
+    // // 6) RIGHT: entry is LEFT, cell has BOTTOM BORDER 
+    //     else if (c == 0 && r % 2 == 1 && isborder(map, r, c, TOP_BOTTOM_BORDER)){
+    //         return RIGHT_DIRECTION;
+    //     }
+    // // 3) RIGHT: entry is TOP
+    //     else if (r == 0 && !isborder(map, r, c, TOP_BOTTOM_BORDER)){
+    //         if (c % 2 == 1){
+    //             fprintf(stderr, "Zle zadaný vstup1\n");
+    //             return false;
+    //         }
+    //         return RIGHT_DIRECTION;
+    //     }
+    // // 4) LEFT: entry is BOTTOM
+    //     else if (r == map->rows - 1 && !isborder(map, r, c, TOP_BOTTOM_BORDER)){
+    //         if ((r % 2 == 0 && c % 2 == 0) || (r % 2 == 1 && c % 2 == 1)){
+    //             fprintf(stderr, "Zle zadaný vstup2\n");
+    //         }
+    //         return LEFT_DIRECTION;
+    //     }
+    //     else{
+    //         fprintf(stderr, "Zle zadaný vstup3\n");
+    //         return false;
+    //     }
+        
+    // }
+
+int move(Map *map, Cell *position, int dir, int leftright){
+    dir = (4 + dir - leftright) % 4;
     for (int i = 0; i < 4; i++){
-        printf("\nSmer je: %d a suradnice su: (%dx%d)", dir, position->row, position->col);
         if (dir == RIGHT_DIRECTION){
             if (!isborder(map, position->row, position->col, RIGHT_BORDER)){
                 position->col++;
@@ -270,7 +294,7 @@ int move(Map *map, Cell *position, int dir){
                 return BOTTOM_DIRECTION;
             }
         }
-        dir = (dir + 1) % 4;
+        dir = (4 + dir + leftright) % 4;
     }
     printf("BUG");
     return false;
@@ -282,47 +306,53 @@ int main(int argc, char *argv[]){
             printf("Napoveda\n");
         }
     }
+
     Map myMap;
     Cell cellPosition;
-    Cell exitCell;
 
-    cellPosition.row = *argv[2] - '0' - 1;
-    cellPosition.col = *argv[3] - '0' - 1;
-
-    exitCell.row = 0;
-    exitCell.col = 2;
-
-    if (!init_map(argv[argc - 1],&myMap)) {
+    if (!init_map(argv[argc - 1],&myMap)){
+        mapDtor(&myMap);
         return 1;  // Chyba při inicializaci mapy
     }
 
-    // if (!isMapValid(&myMap, &entryCell)){
-    //     return 1;
-    // }
+    int rule = RIGHT_RULE;
+    if (strcmp(argv[1], "--test") == 0){
+        if (!isMapValid(&myMap)){
 
-    int rule;
-
-
-    if (strcmp(argv[1], "--lpath") == 0){
+            printf("Invalid\n");
+            mapDtor(&myMap);
+            return 1;
+        }
+        else {
+            printf("Valid\n");
+            mapDtor(&myMap);
+            return 0;
+        }    
+    }
+    else if (strcmp(argv[1], "--lpath") == 0){
+        cellPosition.row = *argv[2] - '0' - 1;
+        cellPosition.col = *argv[3] - '0' - 1;
         rule = LEFT_RULE;
     }
     else if(strcmp(argv[1], "--rpath") == 0){
+        cellPosition.row = *argv[2] - '0' - 1;
+        cellPosition.col = *argv[3] - '0' - 1;
         rule = RIGHT_RULE;
     }
     else {
         fprintf(stderr, "Invalid input\n");
     }    
     int dir;
-    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + 1;
-    printf("Smer je: %d\n", dir);
-    int counter = 0;
-    // cellPosition.row != exitCell.row || cellPosition.col != exitCell.col || 
-    while (counter < 50 && (cellPosition.row != exitCell.row || cellPosition.col != exitCell.col)){
+    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + rule; // Nezabudni (+1 ak rpath, -1 lpath)
+    // printf("path je: %d", dir - rule);
+    // mapDtor(&myMap);
+    // return 0;
+    // printf("Smer je: %d\n", dir - rule);
+    // printf("%d a %d", myMap.rows, myMap.cols);
+    while (!(cellPosition.row < 0 || cellPosition.row >= myMap.rows || cellPosition.col < 0 || cellPosition.col >= myMap.cols)){
         // Toto je dobre
-        dir = move(&myMap, &cellPosition, dir);
-         
-        // Safety break
-        counter++;
+        printf("%d,%d\n", cellPosition.row + 1, cellPosition.col + 1);
+        dir = move(&myMap, &cellPosition, dir, rule);
     }
     
 
