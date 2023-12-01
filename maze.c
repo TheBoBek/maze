@@ -22,6 +22,9 @@
 #define LEFT_RULE -1
 #define RIGHT_RULE 1
 
+// Number of directions
+#define NUM_DIRS 4
+
 
 typedef struct {
     int rows;
@@ -34,27 +37,8 @@ typedef struct{
     int col;
 }Cell;
 
-// Function initializes map from specified file
-bool init_map(const char *filename, Map *map) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return false;
-    }
-
-    if (fscanf(file, "%d %d", &map->rows, &map->cols) != 2) {
-        fprintf(stderr, "Error reading map dimensions\n");
-        fclose(file);
-        return false;
-    }
-
-    //Initialization of row and cols
-    map->cells = malloc(map->rows * map->cols * sizeof(unsigned char) + 1);
-    if (map->cells == NULL) {
-        perror("Memory allocation failed");
-        fclose(file);
-        return false;
-    }
+// Load map data from file to structure Map
+void load_map(Map *map, FILE *file){
     int i = 0;
     int cell;
     // Appendation of map data
@@ -63,6 +47,32 @@ bool init_map(const char *filename, Map *map) {
         i++;
     }
     map->cells[i] = '\0';
+}
+
+// Function initializes map from specified file
+bool init_map(const char *filename, Map *map) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return false;
+    }
+
+    // Read header of the file with map dimensions
+    if (fscanf(file, "%d %d", &map->rows, &map->cols) != 2) {
+        fprintf(stderr, "Error reading map dimensions\n");
+        fclose(file);
+        return false;
+    }
+
+    //Initialization of rows and cols
+    map->cells = malloc(map->rows * map->cols * sizeof(unsigned char) + 1);
+    if (map->cells == NULL) {
+        perror("Memory allocation failed");
+        fclose(file);
+        return false;
+    }
+
+    load_map(map, file);
 
     fclose(file);
     return true;
@@ -76,9 +86,19 @@ bool isborder(Map *map, int r, int c, int border) {
         fprintf(stderr, "Invalid map coordinates\n");
         return false;
     }
+    // Select cell from map
     unsigned char cell = map->cells[r * map->cols + c];
-    return ((cell - '0') & border) != 0;
+
+    // Based on binary values checks if is border
+    if (((cell - '0') & border) != 0){
+        return true;
+    }
+    else{
+        return false;
+    }
 }
+
+// Destruction of struct
 void mapDtor(Map *map) {
     free(map->cells);
     map->cells = NULL;
@@ -107,6 +127,7 @@ bool shareCellsBorder(Map *map, int counter){
     }
     return true;
 }
+
 // Function checks if the map is valid
 bool isMapValid(Map *map){
     if (map->cells < 0 || map->rows < 0){
@@ -143,6 +164,7 @@ bool isMapValid(Map *map){
     return true;
 }
 
+// Function decides which direction will cell follow, returns direction (int) in range from RIGHT to BOTTOM (0-3)
 int start_border(Map *map, int r, int c, int leftright){
     // If RIGHT rule
     if (leftright == RIGHT_RULE){
@@ -165,8 +187,8 @@ int start_border(Map *map, int r, int c, int leftright){
                 return LEFT_DIRECTION;
             }
             else{
-                printf("BUG1 start_border\n");
-                return false;
+                fprintf(stderr, "Invalid data\n");
+                return -1;
             }
         }
         // 3) LEFT: entry is TOP
@@ -178,7 +200,7 @@ int start_border(Map *map, int r, int c, int leftright){
             return RIGHT_DIRECTION;
         }
         else{
-            printf("Bug\n");
+            fprintf(stderr, "Error during start border1\n");
             return -1;
         }
     }
@@ -203,7 +225,7 @@ int start_border(Map *map, int r, int c, int leftright){
     // 3) RIGHT: entry is TOP
         else if (r == 0){
             if (c % 2 == 1){
-                fprintf(stderr, "Invalid entry\n");
+                fprintf(stderr, "Error during start border2\n");
                 return false;
             }
             return RIGHT_DIRECTION;
@@ -216,16 +238,21 @@ int start_border(Map *map, int r, int c, int leftright){
             return LEFT_DIRECTION;
         }
         else{
-            fprintf(stderr, "Invalid entry\n");
+            fprintf(stderr, "Error during start_border3\n");
             return false;
         }
 }
-// Function moves position of the cell
+
+// Function moves position of the cell based on previous direction, returns the direction it moved the cell
 int move(Map *map, Cell *position, int dir, int leftright){
-    dir = (4 + dir - leftright) % 4;
-    for (int i = 0; i < 4; i++){
+    // Set new value based on previous direction and leftright rule
+    dir = (NUM_DIRS + dir - leftright) % NUM_DIRS;
+
+    // Iterate through all directions possible in triangle
+    for (int i = 0; i < NUM_DIRS; i++){
         if (dir == RIGHT_DIRECTION){
             if (!isborder(map, position->row, position->col, RIGHT_BORDER)){
+                // Moves position RIGHT
                 position->col++;
                 return dir;
             }
@@ -233,12 +260,14 @@ int move(Map *map, Cell *position, int dir, int leftright){
         else if (dir == TOP_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 0) ||
                                           (position->row % 2 == 1 && position->col % 2 == 1))){
             if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
+                // Move position UP
                 position->row--;
                 return dir;
             }
         }
         else if (dir == LEFT_DIRECTION){
             if (!isborder(map, position->row, position->col, LEFT_BORDER)){
+                // Move position LEFT
                 position->col--;
                 return dir;
             }
@@ -246,50 +275,53 @@ int move(Map *map, Cell *position, int dir, int leftright){
         else if (dir == BOTTOM_DIRECTION && ((position->row % 2 == 0 && position->col % 2 == 1) || 
                                              (position->row % 2 == 1 && position->col % 2 == 0))){
             if (!isborder(map, position->row, position->col, TOP_BOTTOM_BORDER)){
+                // Move position DOWN 
                 position->row++;
-                return BOTTOM_DIRECTION;
+                return dir;
             }
         }
-        dir = (4 + dir + leftright) % 4;
+        // Set new value for dir based on leftright rule and previous direction
+        dir = (NUM_DIRS + dir + leftright) % NUM_DIRS;
     }
     fprintf(stderr, "Error during rotation in cell\n");
     return -1;
 }
 
+// Function tests the map
+void test(Map *map){
+    if (isMapValid(map)){
+        printf("Valid\n");
+    }
+    else {
+        printf("Invalid\n");
+    }    
+}
+
 int main(int argc, char *argv[]){
-    if (argc > 1){
-        if (strcmp(argv[1],"--help") == 0){
-            printf("Napoveda\n");
-        }
+    if (argc < 2){
+        fprintf(stderr, "Invalid arguments\n");
+        return 0;
     }
 
     Map myMap;
     Cell cellPosition;
-
+    
     if (!init_map(argv[argc - 1],&myMap)){
-        // Error during initialization
-        mapDtor(&myMap);
-        return 1;
+            // Error during initialization
+            return 1;
     }
 
     int rule = RIGHT_RULE;
-    if (argv [1] == NULL){
-        return 0;
+    if (strcmp(argv[1],"--help") == 0){
+        printf("Napoveda\n");
     }
     // Map validation
     else if (strcmp(argv[1], "--test") == 0){
-        if (!isMapValid(&myMap)){
-            printf("Invalid\n");
-            mapDtor(&myMap);
-            return 1;
-        }
-        else {
-            printf("Valid\n");
-            mapDtor(&myMap);
-            return 0;
-        }    
+        test(&myMap);
+        mapDtor(&myMap);
+        return 0;
     }
-    // Rule initialization
+    // Rule and start cell initialization
     else if (strcmp(argv[1], "--lpath") == 0){
         cellPosition.row = *argv[2] - '0' - 1;
         cellPosition.col = *argv[3] - '0' - 1;
@@ -306,10 +338,10 @@ int main(int argc, char *argv[]){
         mapDtor(&myMap);
         return 1;
     }
-
-    int dir;
+    
     // Initializing first direction (adds rule constant, which is substracted in move function)
-    dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + rule;
+    int dir = start_border(&myMap, cellPosition.row, cellPosition.col, rule) + rule;
+
     // Cycle runs obeying the rules of rpath or lpath until cellPosition coordinates are out of rows and columns range
     while (!(cellPosition.row < 0 || cellPosition.row >= myMap.rows || cellPosition.col < 0 || cellPosition.col >= myMap.cols)){
         printf("%d,%d\n", cellPosition.row + 1, cellPosition.col + 1);
